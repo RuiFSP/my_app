@@ -40,7 +40,8 @@ with open(os.path.join('data', 'dtypes.pickle'), 'rb') as fh:
     dtypes = pickle.load(fh)
 
 # Load the pipeline from the file
-pipeline = joblib.load(os.path.join('data','pipeline.pickle'))
+with open(os.path.join('data', 'dtypes.pickle'), 'rb') as fh:
+    pipeline = pickle.load(fh)
 
 
 @app.route('/will_recidivate', methods=['POST'])
