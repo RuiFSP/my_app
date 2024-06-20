@@ -40,7 +40,7 @@ with open(os.path.join('data', 'dtypes.pickle'), 'rb') as fh:
     dtypes = pickle.load(fh)
 
 # Load the pipeline from the file
-with open(os.path.join('data', 'dtypes.pickle'), 'rb') as fh:
+with open(os.path.join('data', 'pipeline.pickle'), 'rb') as fh:
     pipeline = pickle.load(fh)
 
 
