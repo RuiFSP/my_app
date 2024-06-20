@@ -36,11 +36,11 @@ with open(os.path.join('data', 'columns.json'), 'r') as fh:
     columns = json.load(fh)
 
 # Load the dtypes from the file
-with open(os.path.join('my_data', 'dtypes.pickle'), 'rb') as fh:
+with open(os.path.join('data', 'dtypes.pickle'), 'rb') as fh:
     dtypes = pickle.load(fh)
 
 # Load the pipeline from the file
-pipeline = joblib.load(os.path.join('my_data','pipeline.pickle'))
+pipeline = joblib.load(os.path.join('data','pipeline.pickle'))
 
 
 @app.route('/will_recidivate', methods=['POST'])
