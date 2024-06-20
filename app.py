@@ -1,9 +1,9 @@
 from flask import Flask, request, jsonify
 import pickle
 import json
-import pandas as pd
 import os
 import joblib
+import pandas as pd
 from peewee import SqliteDatabase, Model, IntegerField, FloatField, TextField, BooleanField, IntegrityError
 from utils import FeatureCreationAPI
 from playhouse.shortcuts import model_to_dict
@@ -13,7 +13,7 @@ from playhouse.db_url import connect
 #DB = SqliteDatabase('predictions.db')
 DB = connect(os.environ.get('DATABASE_URL') or 'sqlite:///predicts.db')
 
-
+##3###################################################
 class Prediction(Model):
     observation_id = IntegerField(unique=True)
     observation = TextField()
@@ -26,7 +26,6 @@ class Prediction(Model):
 
 
 DB.create_tables([Prediction], safe=True)
-#####################################################
 
 # Initialize Flask application
 app = Flask(__name__)
@@ -39,7 +38,7 @@ with open(os.path.join('data', 'columns.json'), 'r') as fh:
 with open(os.path.join('data', 'dtypes.pickle'), 'rb') as fh:
     dtypes = pickle.load(fh)
 
-# Load the pipeline from the file
+# Load the pipeline from the file (corrected single load)
 with open(os.path.join('data', 'pipeline.pickle'), 'rb') as fh:
     pipeline = pickle.load(fh)
 
@@ -51,64 +50,55 @@ def will_recidivate():
     try:
         # Extract data from request
         data_json = request.get_json()
-        #app.logger.info(f"Received data: {data_json}")
 
         # Convert data to DataFrame
         data_df = pd.DataFrame([data_json])
-        #app.logger.info(f"Data DataFrame: {data_df}")
 
         # Apply feature creation pipeline
         processed_data = FeatureCreationAPI().transform(data_df)
-        #app.logger.info(f"Transformed data: {processed_data}")
 
         # Extract the ID from the DataFrame
         _id = processed_data['id'].values[0]
         observation = processed_data[['id', 'sex', 'race', 'juv_fel_count', 'juv_misd_count', 'juv_other_count',
                                       'priors_count', 'c_charge_degree', 'age_group', 'weights_race']]
 
-        # Log the columns variable
-        #app.logger.info(f"Columns: {columns}")
-
         # Prepare observation as DataFrame with correct columns and types
-        obs = pd.DataFrame(observation.values, columns=observation.columns).astype(dtypes)
-        #app.logger.info(f"Observation DataFrame: {obs}")
+        obs = pd.DataFrame(observation.values,
+                           columns=observation.columns).astype(dtypes)
 
         # Predict the class
         pred = pipeline.predict(obs)[0]
-        #app.logger.info(f"Predicted class: {pred}")
-        
+        app.logger.info(f"Predicted class: {pred}")
+
         # Predict probability of positive class (index 1)
         pred_proba = pipeline.predict_proba(obs)[0, 1]
-        #app.logger.info(f"Predicted probability: {pred_proba}")
+        app.logger.info(f"Predicted probability: {pred_proba}")
 
         # Save prediction to database
         p = Prediction(
-            observation_id=int(_id),  # Convert to native int
-            pred=bool(pred),  # Convert to native bool
-            pred_proba=float(pred_proba),  # Convert to native float
+            observation_id=int(_id),
+            pred=bool(pred),
+            pred_proba=float(pred_proba),
             observation=observation.to_json(orient='records')[1:-1]
         )
 
-        # Attempt to save; handle IntegrityError if ID already exists
         try:
             p.save()
         except IntegrityError:
             error_msg = f'Observation ID: {_id} already exists'
             app.logger.error(f'ERROR: {error_msg}')
             DB.rollback()
-            # Convert to native bool
-            return jsonify({'error': error_msg, 'outcome': bool(pred)}), 409  # Conflict HTTP status code
+            return jsonify({'error': error_msg, 'outcome': bool(pred)}), 409
 
         return jsonify({
-            'id': int(_id),  # Convert to native int
-            'outcome': bool(pred)  # Convert to native bool
+            'id': int(_id),
+            'outcome': bool(pred)
         })
 
     except Exception as e:
         app.logger.error(f"An error occurred: {e}", exc_info=True)
-        return jsonify({
-            "error": "Observation is invalid!"
-        })
+        return jsonify({"error": "Observation is invalid!"})
+
 
 @app.route('/recidivism_result', methods=['POST'])
 def recidivism_result():
@@ -117,14 +107,14 @@ def recidivism_result():
     try:
         # Extract data from request
         data_json = request.get_json()
-        #app.logger.info(f"Received data: {data_json}")
 
         # Extract ID and true outcome from the request
         observation_id = int(data_json['id'])
         true_outcome = bool(data_json['outcome'])
 
         # Check if the ID exists in the database
-        prediction = Prediction.get_or_none(Prediction.observation_id == observation_id)
+        prediction = Prediction.get_or_none(
+            Prediction.observation_id == observation_id)
 
         if prediction is None:
             error_msg = f'Observation ID: {observation_id} not found'
@@ -143,9 +133,7 @@ def recidivism_result():
 
     except Exception as e:
         app.logger.error(f"An error occurred: {e}", exc_info=True)
-        return jsonify({
-            "error": "Invalid input data!"
-        })
+        return jsonify({"error": "Invalid input data!"})
 
 if __name__ == "__main__":
     app.run(debug=True)
