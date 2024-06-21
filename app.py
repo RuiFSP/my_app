@@ -56,8 +56,8 @@ def will_recidivate():
         data_df = pd.DataFrame([data_json])
         
         if data_df.isnull().values.any():
-            app.logger.info(f"Input data contains null values: {data_df.isnull().sum()}")
-            # Handle missing values: you can choose to fill them with default values or return an error
+            app.logger.error(f"Input data contains null values: {data_df.isnull().sum()}")
+            # Handle missing values: fill with default values
             data_df.fillna({
                 'c_offense_date': '2013-08-25 00:00:00.000',
                 'c_arrest_date': '2013-07-02 00:00:00.000',
