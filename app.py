@@ -54,6 +54,16 @@ def will_recidivate():
 
         # Convert data to DataFrame
         data_df = pd.DataFrame([data_json])
+        
+        if data_df.isnull().values.any():
+            app.logger.error(f"Input data contains null values: {data_df.isnull().sum()}")
+            # Handle missing values: you can choose to fill them with default values or return an error
+            data_df.fillna({
+                'c_offense_date': '2013-08-25 00:00:00.000',
+                'c_arrest_date': '2013-07-02 00:00:00.000',
+                'c_jail_in': '2013-09-13 02:36:35.500'
+                # Add other columns and their default values as necessary
+            }, inplace=True)
 
         # Apply feature creation pipeline
         processed_data = FeatureCreationAPI().transform(data_df)
