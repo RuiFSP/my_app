@@ -43,13 +43,14 @@ with open(os.path.join('data', 'pipeline.pickle'), 'rb') as fh:
     pipeline = pickle.load(fh)
 
 
-@app.route('/will_recidivate', methods=['POST'])
+@app.route('/will_recidivate/', methods=['POST'])
 def will_recidivate():
     app.logger.info(f"Received request for endpoint: {request.endpoint}")
 
     try:
         # Extract data from request
         data_json = request.get_json()
+        app.logger.info(f"Data received: {data_json}")
 
         # Convert data to DataFrame
         data_df = pd.DataFrame([data_json])
@@ -105,13 +106,14 @@ def will_recidivate():
         return jsonify({"error": "Observation is invalid!"})
 
 
-@app.route('/recidivism_result', methods=['POST'])
+@app.route('/recidivism_result/', methods=['POST'])
 def recidivism_result():
     app.logger.info(f"Received request for endpoint: {request.endpoint}")
 
     try:
         # Extract data from request
         data_json = request.get_json()
+        app.logger.info(f"Data received: {data_json}")
 
         # Extract ID and true outcome from the request
         observation_id = int(data_json['id'])
