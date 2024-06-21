@@ -68,11 +68,11 @@ def will_recidivate():
 
         # Predict the class
         pred = pipeline.predict(obs)[0]
-        app.logger.info(f"Predicted class: {pred}")
+        #app.logger.info(f"Predicted class: {pred}")
 
         # Predict probability of positive class (index 1)
         pred_proba = pipeline.predict_proba(obs)[0, 1]
-        app.logger.info(f"Predicted probability: {pred_proba}")
+        #app.logger.info(f"Predicted probability: {pred_proba}")
 
         # Save prediction to database
         p = Prediction(
@@ -90,10 +90,15 @@ def will_recidivate():
             DB.rollback()
             return jsonify({'error': error_msg, 'outcome': bool(pred)}), 409
 
-        return jsonify({
+        response_data = {
             'id': int(_id),
             'outcome': bool(pred)
-        })
+        }
+        
+        # Log the JSON response
+        app.logger.info(f"Response JSON: {response_data}")
+        
+        return jsonify(response_data)
 
     except Exception as e:
         app.logger.error(f"An error occurred: {e}", exc_info=True)
@@ -125,12 +130,17 @@ def recidivism_result():
         prediction.true_class = true_outcome
         prediction.save()
 
-        return jsonify({
+        response_data = {
             'id': prediction.observation_id,
             'outcome': prediction.true_class,
             'predicted_outcome': prediction.pred
-        })
+        }
 
+        # Log the JSON response
+        app.logger.info(f"Response JSON: {response_data}")
+        
+        return jsonify(response_data)
+    
     except Exception as e:
         app.logger.error(f"An error occurred: {e}", exc_info=True)
         return jsonify({"error": "Invalid input data!"})
