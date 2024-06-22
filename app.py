@@ -57,8 +57,8 @@ def will_recidivate():
         # Generate unique ID if not provided
         if not data_json.get('id'):
             data_json['id'] = generate_unique_id()
-            app.logger.info(f"Generated new ID: {data_json['id']}")
-            app.logger.info(f"Data received after new id was generated: {data_json}")
+            app.logger.info(f"Generated unique ID for missing value ID: {data_json['id']}")
+            #app.logger.info(f"Data received after new id was generated: {data_json}")
             
         # Convert data to DataFrame
         data_df = pd.DataFrame([data_json])
@@ -67,11 +67,9 @@ def will_recidivate():
             app.logger.error(f"Input data contains null values: {data_df.isnull().sum()}")
             # Handle missing values: fill with default values
             data_df.fillna({
-                'c_offense_date': '2013-08-25 00:00:00.000',
-                'c_arrest_date': '2013-07-02 00:00:00.000',
                 'c_jail_in': '2013-09-13 02:36:35.500'
-                # Add other columns and their default values as necessary
             }, inplace=True)
+            app.logger.info(f"Data after filling missing values: {data_df['c_jail_in']}")
 
         # Apply feature creation pipeline
         processed_data = FeatureCreationAPI().transform(data_df)
@@ -133,6 +131,12 @@ def recidivism_result():
         # Extract data from request
         data_json = request.get_json()
         app.logger.info(f"Data received: {data_json}")
+        
+        # Check if 'id' is None or not present
+        if 'id' not in data_json or data_json['id'] is None:
+            error_msg = "'id' field is missing or set to None"
+            app.logger.error(f"ERROR: {error_msg}")
+            return jsonify({'error': error_msg})
 
         # Extract ID and true outcome from the request
         observation_id = int(data_json['id'])
