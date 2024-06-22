@@ -6,7 +6,7 @@ import joblib
 import uuid
 import pandas as pd
 from peewee import SqliteDatabase, Model, IntegerField, FloatField, TextField, BooleanField, IntegrityError
-from utils import FeatureCreationAPI
+from utils import FeatureCreationAPI, generate_unique_id
 from playhouse.shortcuts import model_to_dict
 from playhouse.db_url import connect
 
@@ -56,9 +56,7 @@ def will_recidivate():
         
         # Generate unique ID if not provided
         if not data_json.get('id'):
-            data_json['id'] = str(uuid.uuid4())
-            app.logger.info(f"Generated new ID: {data_json['id']}")
-            app.logger.info(f"Data received after new id was generated: {data_json}")
+            data_json['observation_id'] = generate_unique_id()
             
         # Convert data to DataFrame
         data_df = pd.DataFrame([data_json])

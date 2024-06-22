@@ -1,5 +1,6 @@
 from sklearn.base import BaseEstimator, TransformerMixin
 import pandas as pd
+import uuid
 
 
 class FeatureCreationAPI(BaseEstimator, TransformerMixin):
@@ -65,3 +66,9 @@ class FeatureCreationAPI(BaseEstimator, TransformerMixin):
                      'c_arrest_date', 'name', 'c_jail_in', 'age_at_arrest'], axis=1)
 
         return df
+
+def generate_unique_id():
+    # Function to generate a unique numeric ID (you can customize as needed)
+    # Example: using a counter or any other method to ensure uniqueness
+    # Here we can use a UUID and hash it to an integer for simplicity
+    return int(uuid.uuid4().int & (1<<32)-1)
