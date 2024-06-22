@@ -58,8 +58,8 @@ def will_recidivate():
         if not data_json.get('id'):
             data_json['id'] = str(uuid.uuid4())
             app.logger.info(f"Generated new ID: {data_json['id']}")
-        
-
+            app.logger.info(f"Data received after new id was generated: {data_json}")
+            
         # Convert data to DataFrame
         data_df = pd.DataFrame([data_json])
         
@@ -78,6 +78,7 @@ def will_recidivate():
 
         # Extract the ID from the DataFrame
         _id = processed_data['id'].values[0]
+        app.logger.info(f"Observation ID: {_id}")
         observation = processed_data[['id', 'sex', 'race', 'juv_fel_count', 'juv_misd_count', 'juv_other_count',
                                       'priors_count', 'c_charge_degree', 'age_group', 'weights_race']]
 
