@@ -56,7 +56,9 @@ def will_recidivate():
         
         # Generate unique ID if not provided
         if not data_json.get('id'):
-            data_json['observation_id'] = generate_unique_id()
+            data_json['id'] = generate_unique_id()
+            app.logger.info(f"Generated new ID: {data_json['id']}")
+            app.logger.info(f"Data received after new id was generated: {data_json}")
             
         # Convert data to DataFrame
         data_df = pd.DataFrame([data_json])
