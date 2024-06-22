@@ -3,6 +3,7 @@ import pickle
 import json
 import os
 import joblib
+import uuid
 import pandas as pd
 from peewee import SqliteDatabase, Model, IntegerField, FloatField, TextField, BooleanField, IntegrityError
 from utils import FeatureCreationAPI
@@ -51,6 +52,13 @@ def will_recidivate():
         # Extract data from request
         data_json = request.get_json()
         app.logger.info(f"Data received: {data_json}")
+        
+        
+        # Generate unique ID if not provided
+        if not data_json.get('id'):
+            data_json['id'] = str(uuid.uuid4())
+            app.logger.info(f"Generated new ID: {data_json['id']}")
+        
 
         # Convert data to DataFrame
         data_df = pd.DataFrame([data_json])
