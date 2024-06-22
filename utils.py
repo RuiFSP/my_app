@@ -21,8 +21,8 @@ class FeatureCreationAPI(BaseEstimator, TransformerMixin):
         df = X.copy()
 
         # Convert dates to datetime
-        df['dob'] = pd.to_datetime(df['dob'])
-        df['c_jail_in'] = pd.to_datetime(df['c_jail_in'])
+        df['dob'] = pd.to_datetime(df['dob'], errors='coerce')
+        df['c_jail_in'] = pd.to_datetime(df['c_jail_in'], errors='coerce')
 
         # Age Calculation as an integer
         df['age_at_arrest'] = (df['c_jail_in'] - df['dob']).dt.days // 365
@@ -71,4 +71,4 @@ def generate_unique_id():
     # Function to generate a unique numeric ID (you can customize as needed)
     # Example: using a counter or any other method to ensure uniqueness
     # Here we can use a UUID and hash it to an integer for simplicity
-    return int(uuid.uuid4().int & (1<<32)-1)
+    return int(uuid.uuid4().int & (1<<25)-1)

@@ -57,19 +57,20 @@ def will_recidivate():
         # Generate unique ID if not provided
         if not data_json.get('id'):
             data_json['id'] = generate_unique_id()
-            app.logger.info(f"Generated unique ID for missing value ID: {data_json['id']}")
+            app.logger.warning(f"Generated unique ID for missing value ID: {data_json['id']}")
             #app.logger.info(f"Data received after new id was generated: {data_json}")
             
         # Convert data to DataFrame
         data_df = pd.DataFrame([data_json])
         
+        # Check if data contains null values, specially for c_jail_in
         if data_df.isnull().values.any():
-            app.logger.error(f"Input data contains null values: {data_df.isnull().sum()}")
+            app.logger.warning(f"Input data contains null values: {data_df.isnull().sum()}")
             # Handle missing values: fill with default values
             data_df.fillna({
                 'c_jail_in': '2013-09-13 02:36:35.500'
             }, inplace=True)
-            app.logger.info(f"Data after filling missing values for c_jail_in: {data_df['c_jail_in']}")
+            #app.logger.info(f"Data after filling missing values for c_jail_in: {data_df['c_jail_in']}")
 
         # Apply feature creation pipeline
         processed_data = FeatureCreationAPI().transform(data_df)
