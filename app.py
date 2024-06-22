@@ -69,14 +69,14 @@ def will_recidivate():
             data_df.fillna({
                 'c_jail_in': '2013-09-13 02:36:35.500'
             }, inplace=True)
-            app.logger.info(f"Data after filling missing values: {data_df['c_jail_in']}")
+            app.logger.info(f"Data after filling missing values for c_jail_in: {data_df['c_jail_in']}")
 
         # Apply feature creation pipeline
         processed_data = FeatureCreationAPI().transform(data_df)
 
         # Extract the ID from the DataFrame
         _id = processed_data['id'].values[0]
-        app.logger.info(f"Observation ID: {_id}")
+        app.logger.info(f"Observation ID for database: {_id}")
         observation = processed_data[['id', 'sex', 'race', 'juv_fel_count', 'juv_misd_count', 'juv_other_count',
                                       'priors_count', 'c_charge_degree', 'age_group', 'weights_race']]
 
