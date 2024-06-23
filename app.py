@@ -114,6 +114,7 @@ def recidivism_result():
     }
 
     logger.info(f"Response generated for '/recidivism_result/' endpoint for observation ID: {observation_id}")
+    logger.info(f"Response JSON: {response_data}")
     return jsonify(response_data)
 
 @routes.route('/will_recidivate/', methods=['POST'])
@@ -152,6 +153,7 @@ def will_recidivate():
     }
 
     logger.info(f"Response generated for '/will_recidivate/' endpoint for observation ID: {_id}")
+    logger.info(f"Response JSON: {response_data}")
     return jsonify(response_data)
 
 # Register blueprint
