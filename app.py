@@ -1,11 +1,10 @@
-from flask import Blueprint, request, jsonify, Flask
 import os
 import pickle
 import json
 import logging
 import pandas as pd
+from flask import Flask, Blueprint, request, jsonify
 from peewee import SqliteDatabase, Model, IntegerField, FloatField, TextField, BooleanField, IntegrityError
-from playhouse.shortcuts import model_to_dict
 from playhouse.db_url import connect
 from utils import FeatureCreationAPI, generate_unique_id
 
@@ -52,6 +51,7 @@ def load_json(request):
 def validate_input(data_json, required_fields):
     for field in required_fields:
         if field not in data_json or data_json[field] is None:
+            logger.error(f"Invalid input: '{field}' field is missing or set to None")
             return False, f"'{field}' field is missing or set to None"
     return True, ""
 
@@ -61,6 +61,7 @@ def handle_missing_data(data_df):
     return data_df
 
 def process_data(data_json):
+    logger.info("Processing data...")
     data_df = pd.DataFrame([data_json])
     data_df = handle_missing_data(data_df)
     processed_data = FeatureCreationAPI().transform(data_df)
@@ -75,16 +76,19 @@ def save_prediction(_id, pred, pred_proba, observation):
     )
     try:
         p.save()
-        return None
+        logger.info(f"Saved prediction for observation ID: {_id}")
     except IntegrityError:
         error_msg = f'Observation ID: {_id} already exists'
+        logger.warning(error_msg)
         DB.rollback()
         return error_msg
 
 @routes.route('/will_recidivate/', methods=['POST'])
 def will_recidivate():
+    logger.info("Received POST request on '/will_recidivate/' endpoint.")
     data_json = load_json(request)
     if data_json is None:
+        logger.error("Invalid JSON input received.")
         return jsonify({"error": "Invalid JSON input!"}), 400
 
     if not data_json.get('id'):
@@ -99,13 +103,13 @@ def will_recidivate():
     try:
         pred = pipeline.predict(obs)[0]
         pred_proba = pipeline.predict_proba(obs)[0, 1]
+        logger.info(f"Prediction successful for observation ID: {_id}")
     except Exception as e:
         logger.error(f"Prediction failed: {e}")
         return jsonify({"error": "Prediction failed!"}), 500
 
     error_msg = save_prediction(_id, pred, pred_proba, observation)
     if error_msg:
-        logger.warning(error_msg)
         return jsonify({'error': error_msg, 'outcome': bool(pred)}), 409
 
     response_data = {
@@ -113,16 +117,20 @@ def will_recidivate():
         'outcome': bool(pred)
     }
 
+    logger.info(f"Response generated for '/will_recidivate/' endpoint for observation ID: {_id}")
     return jsonify(response_data)
 
 @routes.route('/recidivism_result/', methods=['POST'])
 def recidivism_result():
+    logger.info("Received POST request on '/recidivism_result/' endpoint.")
     data_json = load_json(request)
     if data_json is None:
+        logger.error("Invalid JSON input received.")
         return jsonify({"error": "Invalid JSON input!"}), 400
 
     valid, message = validate_input(data_json, ['id', 'outcome'])
     if not valid:
+        logger.error(f"Validation failed: {message}")
         return jsonify({'error': message}), 400
 
     observation_id = int(data_json['id'])
@@ -130,6 +138,7 @@ def recidivism_result():
 
     prediction = Prediction.get_or_none(Prediction.observation_id == observation_id)
     if prediction is None:
+        logger.warning(f"Observation ID: {observation_id} not found")
         return jsonify({'error': f'Observation ID: {observation_id} not found'}), 404
 
     prediction.true_class = true_outcome
@@ -141,11 +150,11 @@ def recidivism_result():
         'predicted_outcome': prediction.pred
     }
 
+    logger.info(f"Response generated for '/recidivism_result/' endpoint for observation ID: {observation_id}")
     return jsonify(response_data)
 
 # Register blueprint
 app.register_blueprint(routes, url_prefix='/api')
 
 if __name__ == "__main__":
-    #app.run(debug=True)
     app.run(host='0.0.0.0', debug=True, port=5000)
