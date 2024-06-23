@@ -87,6 +87,7 @@ def save_prediction(_id, pred, pred_proba, observation):
 def recidivism_result():
     logger.info("Received POST request on '/recidivism_result/' endpoint.")
     data_json = load_json(request)
+    logger.info(f"Request JSON: {data_json}")
     if data_json is None:
         logger.error("Invalid JSON input received.")
         return jsonify({"error": "Invalid JSON input!"}), 400
@@ -121,6 +122,7 @@ def recidivism_result():
 def will_recidivate():
     logger.info("Received POST request on '/will_recidivate/' endpoint.")
     data_json = load_json(request)
+    logger.info(f"Request JSON: {data_json}")
     if data_json is None:
         logger.error("Invalid JSON input received.")
         return jsonify({"error": "Invalid JSON input!"}), 400
