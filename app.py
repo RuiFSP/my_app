@@ -1,20 +1,17 @@
-from flask import Flask, request, jsonify
+from flask import Blueprint, request, jsonify, Flask
+import os
 import pickle
 import json
-import os
-import joblib
-import uuid
+import logging
 import pandas as pd
 from peewee import SqliteDatabase, Model, IntegerField, FloatField, TextField, BooleanField, IntegrityError
-from utils import FeatureCreationAPI, generate_unique_id
 from playhouse.shortcuts import model_to_dict
 from playhouse.db_url import connect
+from utils import FeatureCreationAPI, generate_unique_id
 
-# Define database model
-#DB = SqliteDatabase('predictions.db')
+# Database configuration
 DB = connect(os.environ.get('DATABASE_URL') or 'sqlite:///predicts.db')
 
-##3###################################################
 class Prediction(Model):
     observation_id = IntegerField(unique=True)
     observation = TextField()
@@ -25,151 +22,130 @@ class Prediction(Model):
     class Meta:
         database = DB
 
-
 DB.create_tables([Prediction], safe=True)
 
-# Initialize Flask application
+# Initialize Flask application and Blueprint
 app = Flask(__name__)
+routes = Blueprint('routes', __name__)
 
-# Load the column names from the file
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Load column names and dtypes
 with open(os.path.join('data', 'columns.json'), 'r') as fh:
     columns = json.load(fh)
 
-# Load the dtypes from the file
 with open(os.path.join('data', 'dtypes.pickle'), 'rb') as fh:
     dtypes = pickle.load(fh)
 
-# Load the pipeline from the file (corrected single load)
 with open(os.path.join('data', 'pipeline.pickle'), 'rb') as fh:
     pipeline = pickle.load(fh)
 
+def load_json(request):
+    try:
+        return request.get_json()
+    except Exception as e:
+        logger.error(f"Failed to parse JSON: {e}")
+        return None
 
-@app.route('/will_recidivate/', methods=['POST'])
+def validate_input(data_json, required_fields):
+    for field in required_fields:
+        if field not in data_json or data_json[field] is None:
+            return False, f"'{field}' field is missing or set to None"
+    return True, ""
+
+def handle_missing_data(data_df):
+    if data_df.isnull().values.any():
+        data_df.fillna({'c_jail_in': '2013-09-13 02:36:35.500'}, inplace=True)
+    return data_df
+
+def process_data(data_json):
+    data_df = pd.DataFrame([data_json])
+    data_df = handle_missing_data(data_df)
+    processed_data = FeatureCreationAPI().transform(data_df)
+    return processed_data
+
+def save_prediction(_id, pred, pred_proba, observation):
+    p = Prediction(
+        observation_id=int(_id),
+        pred=bool(pred),
+        pred_proba=float(pred_proba),
+        observation=observation.to_json(orient='records')[1:-1]
+    )
+    try:
+        p.save()
+        return None
+    except IntegrityError:
+        error_msg = f'Observation ID: {_id} already exists'
+        DB.rollback()
+        return error_msg
+
+@routes.route('/will_recidivate/', methods=['POST'])
 def will_recidivate():
-    app.logger.info(f"Received request for endpoint: {request.endpoint}")
+    data_json = load_json(request)
+    if data_json is None:
+        return jsonify({"error": "Invalid JSON input!"}), 400
+
+    if not data_json.get('id'):
+        data_json['id'] = generate_unique_id()
+
+    processed_data = process_data(data_json)
+    _id = processed_data['id'].values[0]
+    observation = processed_data[['id', 'sex', 'race', 'juv_fel_count', 'juv_misd_count', 'juv_other_count',
+                                  'priors_count', 'c_charge_degree', 'age_group', 'weights_race']]
+    obs = pd.DataFrame(observation.values, columns=observation.columns).astype(dtypes)
 
     try:
-        # Extract data from request
-        data_json = request.get_json()
-        app.logger.info(f"Data received: {data_json}")
-        
-        
-        # Generate unique ID if not provided
-        if not data_json.get('id'):
-            data_json['id'] = generate_unique_id()
-            app.logger.warning(f"Generated unique ID for missing value ID: {data_json['id']}")
-            #app.logger.info(f"Data received after new id was generated: {data_json}")
-            
-        # Convert data to DataFrame
-        data_df = pd.DataFrame([data_json])
-        
-        # Check if data contains null values, specially for c_jail_in
-        if data_df.isnull().values.any():
-            app.logger.warning(f"Input data contains null values: {data_df.isnull().sum()}")
-            # Handle missing values: fill with default values
-            data_df.fillna({
-                'c_jail_in': '2013-09-13 02:36:35.500'
-            }, inplace=True)
-            #app.logger.info(f"Data after filling missing values for c_jail_in: {data_df['c_jail_in']}")
-
-        # Apply feature creation pipeline
-        processed_data = FeatureCreationAPI().transform(data_df)
-
-        # Extract the ID from the DataFrame
-        _id = processed_data['id'].values[0]
-        app.logger.info(f"Observation ID for database: {_id}")
-        observation = processed_data[['id', 'sex', 'race', 'juv_fel_count', 'juv_misd_count', 'juv_other_count',
-                                      'priors_count', 'c_charge_degree', 'age_group', 'weights_race']]
-
-        # Prepare observation as DataFrame with correct columns and types
-        obs = pd.DataFrame(observation.values,
-                           columns=observation.columns).astype(dtypes)
-
-        # Predict the class
         pred = pipeline.predict(obs)[0]
-        #app.logger.info(f"Predicted class: {pred}")
-
-        # Predict probability of positive class (index 1)
         pred_proba = pipeline.predict_proba(obs)[0, 1]
-        #app.logger.info(f"Predicted probability: {pred_proba}")
-
-        # Save prediction to database
-        p = Prediction(
-            observation_id=int(_id),
-            pred=bool(pred),
-            pred_proba=float(pred_proba),
-            observation=observation.to_json(orient='records')[1:-1]
-        )
-
-        try:
-            p.save()
-        except IntegrityError:
-            error_msg = f'Observation ID: {_id} already exists'
-            app.logger.error(f'ERROR: {error_msg}')
-            DB.rollback()
-            return jsonify({'error': error_msg, 'outcome': bool(pred)}), 409
-
-        response_data = {
-            'id': int(_id),
-            'outcome': bool(pred)
-        }
-        
-        # Log the JSON response
-        app.logger.info(f"Response JSON: {response_data}")
-        
-        return jsonify(response_data)
-
     except Exception as e:
-        app.logger.error(f"An error occurred: {e}", exc_info=True)
-        return jsonify({"error": "Observation is invalid!"})
+        logger.error(f"Prediction failed: {e}")
+        return jsonify({"error": "Prediction failed!"}), 500
 
+    error_msg = save_prediction(_id, pred, pred_proba, observation)
+    if error_msg:
+        logger.warning(error_msg)
+        return jsonify({'error': error_msg, 'outcome': bool(pred)}), 409
 
-@app.route('/recidivism_result/', methods=['POST'])
+    response_data = {
+        'id': int(_id),
+        'outcome': bool(pred)
+    }
+
+    return jsonify(response_data)
+
+@routes.route('/recidivism_result/', methods=['POST'])
 def recidivism_result():
-    app.logger.info(f"Received request for endpoint: {request.endpoint}")
+    data_json = load_json(request)
+    if data_json is None:
+        return jsonify({"error": "Invalid JSON input!"}), 400
 
-    try:
-        # Extract data from request
-        data_json = request.get_json()
-        app.logger.info(f"Data received: {data_json}")
-        
-        # Check if 'id' is None or not present
-        if 'id' not in data_json or data_json['id'] is None:
-            error_msg = "'id' field is missing or set to None"
-            app.logger.error(f"ERROR: {error_msg}")
-            return jsonify({'error': error_msg})
+    valid, message = validate_input(data_json, ['id', 'outcome'])
+    if not valid:
+        return jsonify({'error': message}), 400
 
-        # Extract ID and true outcome from the request
-        observation_id = int(data_json['id'])
-        true_outcome = bool(data_json['outcome'])
+    observation_id = int(data_json['id'])
+    true_outcome = bool(data_json['outcome'])
 
-        # Check if the ID exists in the database
-        prediction = Prediction.get_or_none(
-            Prediction.observation_id == observation_id)
+    prediction = Prediction.get_or_none(Prediction.observation_id == observation_id)
+    if prediction is None:
+        return jsonify({'error': f'Observation ID: {observation_id} not found'}), 404
 
-        if prediction is None:
-            error_msg = f'Observation ID: {observation_id} not found'
-            app.logger.error(f'ERROR: {error_msg}')
-            return jsonify({'error': error_msg})
+    prediction.true_class = true_outcome
+    prediction.save()
 
-        # Update the true_class field in the database
-        prediction.true_class = true_outcome
-        prediction.save()
+    response_data = {
+        'id': prediction.observation_id,
+        'outcome': prediction.true_class,
+        'predicted_outcome': prediction.pred
+    }
 
-        response_data = {
-            'id': prediction.observation_id,
-            'outcome': prediction.true_class,
-            'predicted_outcome': prediction.pred
-        }
+    return jsonify(response_data)
 
-        # Log the JSON response
-        app.logger.info(f"Response JSON: {response_data}")
-        
-        return jsonify(response_data)
-    
-    except Exception as e:
-        app.logger.error(f"An error occurred: {e}", exc_info=True)
-        return jsonify({"error": "Invalid input data!"})
+# Register blueprint
+app.register_blueprint(routes, url_prefix='/api')
 
 if __name__ == "__main__":
+    #app.run(debug=True)
     app.run(host='0.0.0.0', debug=True, port=5000)
