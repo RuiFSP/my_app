@@ -83,43 +83,6 @@ def save_prediction(_id, pred, pred_proba, observation):
         DB.rollback()
         return error_msg
 
-@routes.route('/will_recidivate/', methods=['POST'])
-def will_recidivate():
-    logger.info("Received POST request on '/will_recidivate/' endpoint.")
-    data_json = load_json(request)
-    if data_json is None:
-        logger.error("Invalid JSON input received.")
-        return jsonify({"error": "Invalid JSON input!"}), 400
-
-    if not data_json.get('id'):
-        data_json['id'] = generate_unique_id()
-
-    processed_data = process_data(data_json)
-    _id = processed_data['id'].values[0]
-    observation = processed_data[['id', 'sex', 'race', 'juv_fel_count', 'juv_misd_count', 'juv_other_count',
-                                  'priors_count', 'c_charge_degree', 'age_group', 'weights_race']]
-    obs = pd.DataFrame(observation.values, columns=observation.columns).astype(dtypes)
-
-    try:
-        pred = pipeline.predict(obs)[0]
-        pred_proba = pipeline.predict_proba(obs)[0, 1]
-        logger.info(f"Prediction successful for observation ID: {_id}")
-    except Exception as e:
-        logger.error(f"Prediction failed: {e}")
-        return jsonify({"error": "Prediction failed!"}), 500
-
-    error_msg = save_prediction(_id, pred, pred_proba, observation)
-    if error_msg:
-        return jsonify({'error': error_msg, 'outcome': bool(pred)}), 409
-
-    response_data = {
-        'id': int(_id),
-        'outcome': bool(pred)
-    }
-
-    logger.info(f"Response generated for '/will_recidivate/' endpoint for observation ID: {_id}")
-    return jsonify(response_data)
-
 @routes.route('/recidivism_result/', methods=['POST'])
 def recidivism_result():
     logger.info("Received POST request on '/recidivism_result/' endpoint.")
@@ -151,6 +114,44 @@ def recidivism_result():
     }
 
     logger.info(f"Response generated for '/recidivism_result/' endpoint for observation ID: {observation_id}")
+    return jsonify(response_data)
+
+@routes.route('/will_recidivate/', methods=['POST'])
+def will_recidivate():
+    logger.info("Received POST request on '/will_recidivate/' endpoint.")
+    data_json = load_json(request)
+    if data_json is None:
+        logger.error("Invalid JSON input received.")
+        return jsonify({"error": "Invalid JSON input!"}), 400
+
+    if not data_json.get('id'):
+        data_json['id'] = generate_unique_id()
+
+    processed_data = process_data(data_json)
+    _id = processed_data['id'].values[0]
+    observation = processed_data[['id', 'sex', 'race', 'juv_fel_count', 'juv_misd_count', 'juv_other_count',
+                                  'priors_count', 'c_charge_degree', 'age_group', 'weights_race']]
+    obs = pd.DataFrame(observation.values, columns=observation.columns).astype(dtypes)
+
+    try:
+        pred = pipeline.predict(obs)[0]
+        pred_proba = pipeline.predict_proba(obs)[0, 1]
+        logger.info(f"Prediction successful for observation ID: {_id}")
+    except Exception as e:
+        logger.error(f"Prediction failed: {e}")
+        return jsonify({"error": "Prediction failed!"}), 500
+
+    error_msg = save_prediction(_id, pred, pred_proba, observation)
+    if error_msg:
+        logger.warning(error_msg)
+        return jsonify({'error': error_msg, 'outcome': bool(pred)}), 409
+
+    response_data = {
+        'id': int(_id),
+        'outcome': bool(pred)
+    }
+
+    logger.info(f"Response generated for '/will_recidivate/' endpoint for observation ID: {_id}")
     return jsonify(response_data)
 
 # Register blueprint
