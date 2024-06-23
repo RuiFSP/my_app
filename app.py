@@ -155,7 +155,7 @@ def will_recidivate():
     return jsonify(response_data)
 
 # Register blueprint
-app.register_blueprint(routes, url_prefix='/api')
+app.register_blueprint(routes)
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', debug=True, port=5000)
