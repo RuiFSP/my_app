@@ -42,6 +42,15 @@ with open(os.path.join('data', 'pipeline.pickle'), 'rb') as fh:
     pipeline = pickle.load(fh)
 
 def load_json(request):
+    """
+    Load JSON data from a Flask request object.
+
+    Args:
+        request (flask.Request): The Flask request object containing JSON data.
+
+    Returns:
+        dict: Parsed JSON data as a dictionary, or None if parsing fails.
+    """
     try:
         data = request.get_json()
         if data is None:
@@ -55,6 +64,16 @@ def load_json(request):
         return None
 
 def validate_input(data_json, required_fields):
+    """
+    Validate the presence and non-null values of required fields in JSON data.
+
+    Args:
+        data_json (dict): JSON data to validate.
+        required_fields (list): List of required field names.
+
+    Returns:
+        tuple: (bool, str) - A boolean indicating validation success, and an error message if validation fails.
+    """
     errors = []
     for field in required_fields:
         if field not in data_json or data_json[field] is None:
@@ -65,11 +84,29 @@ def validate_input(data_json, required_fields):
     return True, ""
 
 def handle_missing_data(data_df):
+    """
+    Handle missing data in the provided DataFrame by filling specific fields with default values.
+
+    Args:
+        data_df (pd.DataFrame): DataFrame to handle missing data.
+
+    Returns:
+        pd.DataFrame: DataFrame with missing data handled.
+    """
     if data_df.isnull().values.any():
         data_df.fillna({'c_jail_in': '2013-09-13 02:36:35.500'}, inplace=True)
     return data_df
 
 def process_data(data_json):
+    """
+    Process raw JSON data into a format suitable for model prediction.
+
+    Args:
+        data_json (dict): Raw JSON data to process.
+
+    Returns:
+        pd.DataFrame: Processed data ready for prediction.
+    """
     logger.info("Processing data...")
     data_df = pd.DataFrame([data_json])
     data_df = handle_missing_data(data_df)
@@ -77,6 +114,18 @@ def process_data(data_json):
     return processed_data
 
 def save_prediction(_id, pred, pred_proba, observation):
+    """
+    Save prediction results to the database.
+
+    Args:
+        _id (int): Unique observation ID.
+        pred (bool): Prediction result.
+        pred_proba (float): Prediction probability.
+        observation (pd.DataFrame): Original observation data.
+
+    Returns:
+        str: Error message if saving fails, otherwise None.
+    """
     p = Prediction(
         observation_id=int(_id),
         pred=bool(pred),
@@ -94,6 +143,14 @@ def save_prediction(_id, pred, pred_proba, observation):
 
 @routes.route('/recidivism_result/', methods=['POST'])
 def recidivism_result():
+    """
+    Handle POST requests for recidivism results.
+
+    Expects a JSON payload with 'id' and 'outcome' fields.
+
+    Returns:
+        Response: JSON response containing the prediction outcome or an error message.
+    """
     logger.info("Received POST request on '/recidivism_result/' endpoint.")
     data_json = load_json(request)
     logger.info(f"Request JSON: {data_json}")
@@ -129,6 +186,14 @@ def recidivism_result():
 
 @routes.route('/will_recidivate/', methods=['POST'])
 def will_recidivate():
+    """
+    Handle POST requests to predict recidivism.
+
+    Expects a JSON payload with observation data.
+
+    Returns:
+        Response: JSON response containing the prediction result or an error message.
+    """
     logger.info("Received POST request on '/will_recidivate/' endpoint.")
     data_json = load_json(request)
     logger.info(f"Request JSON: {data_json}")

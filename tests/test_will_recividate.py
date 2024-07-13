@@ -3,7 +3,7 @@ import uuid
 
 # Define the data to send in the request
 data = {
-    "id": str(int(uuid.uuid4().int & (1<<25)-1)),
+    "id": str(int(uuid.uuid4().int & (1 << 25)-1)),
     "name": "rui antonio",
     "sex": "Male",
     "dob": "1987-06-21",
@@ -21,10 +21,12 @@ data = {
 }
 
 # URL of your Flask application endpoint
-url = 'https://myapp-production-9add.up.railway.app/will_recidivate/'
-#url = 'http://127.0.0.1:5000/will_recidivate/'
+# url = 'https://ruipinto-ldsa-production.up.railway.app/will_recidivate/'
+url = 'http://127.0.0.1:5000/will_recidivate/'
 
 # Function to send the POST request and print the result
+
+
 def test_endpoint(data):
     response = requests.post(url, json=data)
     print(f"Testing with payload: {data}")
@@ -34,11 +36,12 @@ def test_endpoint(data):
 
 # Test different scenarios
 
+
 # Scenario 1: Valid ID and c_jail_in normal point
 test_endpoint(data)
 
 # Scenario 2: ID that does not exist in the database
-data["id"] = str(int(uuid.uuid4().int & (1<<25)-1))
+data["id"] = str(int(uuid.uuid4().int & (1 << 25)-1))
 test_endpoint(data)
 
 # Scenario 3: ID is None
@@ -46,10 +49,10 @@ data["id"] = None
 test_endpoint(data)
 
 # Scenario 4: c_jail_in is None
-data["id"] = str(int(uuid.uuid4().int & (1<<25)-1)) #can be a new point
-data["c_jail_in"] = None #c_jail_in is None
+data["id"] = str(int(uuid.uuid4().int & (1 << 25)-1))  # can be a new point
+data["c_jail_in"] = None  # c_jail_in is None
 test_endpoint(data)
 
-#Scenario 5: ID exists in the database
+# Scenario 5: ID exists in the database
 data["id"] = "6108"
 test_endpoint(data)
