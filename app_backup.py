@@ -134,21 +134,11 @@ def will_recidivate():
     _id = processed_data['id'].values[0]
     observation = processed_data[['id', 'sex', 'race', 'juv_fel_count', 'juv_misd_count', 'juv_other_count',
                                   'priors_count', 'c_charge_degree', 'age_group', 'weights_race']]
-    
+    obs = pd.DataFrame(observation.values, columns=observation.columns).astype(dtypes)
+
     try:
-        # Ensure only existing columns are casted
-        obs = pd.DataFrame(observation.values, columns=observation.columns)
-        for column in obs.columns:
-            if column in dtypes:
-                obs[column] = obs[column].astype(dtypes[column])
-        
         pred = pipeline.predict(obs)[0]
         pred_proba = pipeline.predict_proba(obs)[0, 1]
-        
-        # Add pred_prob and pred_baseline columns to the observation
-        obs['pred_prob'] = pred_proba
-        obs['pred_baseline'] = pred
-        
         logger.info(f"Prediction successful for observation ID: {_id}")
     except Exception as e:
         logger.error(f"Prediction failed: {e}")
