@@ -43,16 +43,25 @@ with open(os.path.join('data', 'pipeline.pickle'), 'rb') as fh:
 
 def load_json(request):
     try:
-        return request.get_json()
-    except Exception as e:
+        data = request.get_json()
+        if data is None:
+            raise ValueError("No JSON data found")
+        return data
+    except ValueError as e:
         logger.error(f"Failed to parse JSON: {e}")
+        return None
+    except Exception as e:
+        logger.error(f"Unexpected error: {e}")
         return None
 
 def validate_input(data_json, required_fields):
+    errors = []
     for field in required_fields:
         if field not in data_json or data_json[field] is None:
-            logger.error(f"Invalid input: '{field}' field is missing or set to None")
-            return False, f"'{field}' field is missing or set to None"
+            errors.append(f"'{field}' field is missing or set to None")
+    if errors:
+        logger.error(f"Invalid input: {errors}")
+        return False, ", ".join(errors)
     return True, ""
 
 def handle_missing_data(data_df):
