@@ -125,27 +125,6 @@ The application uses a SQLite database (or other databases via the DATABASE_URL 
 - `pred_proba` (Float)
 - `true_class` (Integer, nullable)
 
-## Utilities
-
-### `load_json(request)`
-
-Loads JSON data from a Flask request.
-
-### `validate_input(data_json, required_fields)`
-
-Validates the input JSON to ensure all required fields are present.
-
-### `handle_missing_data(data_df)`
-
-Handles missing data in the input DataFrame by filling in default values.
-
-### `process_data(data_json)`
-
-Processes the input data, transforms it, and prepares it for prediction.
-
-### `save_prediction(_id, pred, pred_proba, observation)`
-
-Saves a prediction to the database.
 
 ## Logging
 
