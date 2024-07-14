@@ -9,7 +9,6 @@ This repository contains the code for a Flask-based API that predicts the likeli
 - Usage
 - Endpoints
 - Database Schema
-- Utilities
 - Logging
 - License
 
